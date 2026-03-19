@@ -132,7 +132,9 @@ ${ideaTeam ? `팀 구성: ${ideaTeam}` : ''}
 
     const filename = encodeURIComponent(`${aiContent.item_name}_${program}_사업계획서.docx`)
 
-    return new NextResponse(docBuffer, {
+    const uint8 = new Uint8Array(docBuffer)
+
+    return new NextResponse(uint8, {
       headers: {
         'Content-Type': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
         'Content-Disposition': `attachment; filename*=UTF-8''${filename}`,
