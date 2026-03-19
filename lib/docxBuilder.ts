@@ -17,7 +17,7 @@ function run(text: string, opts: { bold?: boolean; size?: number; color?: string
   return new TextRun({ text, font: '맑은 고딕', size: opts.size ?? 20, bold: opts.bold ?? false, color: opts.color ?? '000000' })
 }
 
-function para(children: TextRun[], opts: { align?: (typeof AlignmentType)[keyof typeof AlignmentType]; before?: number; after?: number; line?: number } = {}) {
+function para(children: TextRun[], opts: { align?: typeof AlignmentType[keyof typeof AlignmentType]; before?: number; after?: number; line?: number } = {}) {
   return new Paragraph({
     children,
     alignment: opts.align ?? AlignmentType.LEFT,
@@ -62,10 +62,18 @@ function bulletPara(text: string) {
   })
 }
 
-function cell(content: string | Paragraph[], opts: {
-  width?: number; bold?: boolean; fill?: string; align?: (typeof AlignmentType)[keyof typeof AlignmentType];
-  colSpan?: number; size?: number; borders?: object;
-} = {}) {
+function cell(
+  content: string | Paragraph[],
+  opts: {
+    width?: number
+    bold?: boolean
+    fill?: string
+    align?: typeof AlignmentType[keyof typeof AlignmentType]
+    colSpan?: number
+    size?: number
+    useThinBorder?: boolean
+  } = {}
+) {
   const children: Paragraph[] = Array.isArray(content)
     ? content
     : [new Paragraph({
@@ -73,9 +81,12 @@ function cell(content: string | Paragraph[], opts: {
         alignment: opts.align ?? AlignmentType.LEFT,
         spacing: { before: 40, after: 40, line: 260 },
       })]
+
+  const borders = opts.useThinBorder === false ? allBorders : thinAll
+
   return new TableCell({
     children,
-    borders: (opts.borders ?? thinAll) as Parameters<typeof TableCell>[0]['borders'],
+    borders: borders as any,
     width: opts.width ? { size: opts.width, type: WidthType.DXA } : undefined,
     shading: opts.fill ? { fill: opts.fill, type: ShadingType.CLEAR } : undefined,
     margins: { top: 80, bottom: 80, left: 120, right: 120 },
@@ -85,7 +96,18 @@ function cell(content: string | Paragraph[], opts: {
 }
 
 function hcell(text: string, width: number) {
-  return cell(text, { bold: true, fill: 'D6E4F0', width, borders: allBorders, size: 18 })
+  return new TableCell({
+    children: [new Paragraph({
+      children: [run(text, { bold: true, size: 18 })],
+      alignment: AlignmentType.LEFT,
+      spacing: { before: 40, after: 40, line: 260 },
+    })],
+    borders: allBorders as any,
+    width: { size: width, type: WidthType.DXA },
+    shading: { fill: 'D6E4F0', type: ShadingType.CLEAR },
+    margins: { top: 80, bottom: 80, left: 120, right: 120 },
+    verticalAlign: VerticalAlign.CENTER,
+  })
 }
 
 function table(rows: TableCell[][], colWidths: number[]) {
@@ -93,7 +115,7 @@ function table(rows: TableCell[][], colWidths: number[]) {
     width: { size: CONTENT_W, type: WidthType.DXA },
     columnWidths: colWidths,
     rows: rows.map(r => new TableRow({ children: r })),
-    borders: allBorders,
+    borders: allBorders as any,
   })
 }
 
@@ -148,10 +170,10 @@ export async function buildDocx(input: BpInput): Promise<Buffer> {
         sectionHeader('□  일반현황'),
         para([]),
         table([
-          [hcell('창업아이템명', 2200), cell(c.general.item_name,       { width: 7706 })],
-          [hcell('산출물',       2200), cell(c.general.output,          { width: 7706 })],
-          [hcell('팀 구성 현황', 2200), cell(c.general.team_summary,    { width: 7706 })],
-          [hcell('신청 지원금',  2200), cell(c.general.support_amount,  { width: 7706 })],
+          [hcell('창업아이템명', 2200), cell(c.general.item_name,        { width: 7706 })],
+          [hcell('산출물',       2200), cell(c.general.output,           { width: 7706 })],
+          [hcell('팀 구성 현황', 2200), cell(c.general.team_summary,     { width: 7706 })],
+          [hcell('신청 지원금',  2200), cell(c.general.support_amount,   { width: 7706 })],
           [hcell('사업 개요',    2200), cell(c.general.business_overview, { width: 7706 })],
         ], [2200, 7706]),
 
@@ -162,17 +184,17 @@ export async function buildDocx(input: BpInput): Promise<Buffer> {
         sectionHeader('□  창업 아이템 개요(요약)'),
         para([]),
         table([
-          [hcell('아이템 소개',    2400), cell(c.summary.item_intro,   { width: 7506 })],
-          [hcell('문제 인식',      2400), cell(c.summary.problem,      { width: 7506 })],
-          [hcell('실현 가능성',    2400), cell(c.summary.feasibility,  { width: 7506 })],
-          [hcell('성장 전략',      2400), cell(c.summary.growth,       { width: 7506 })],
-          [hcell('팀 구성',        2400), cell(c.summary.team,         { width: 7506 })],
+          [hcell('아이템 소개',  2400), cell(c.summary.item_intro,  { width: 7506 })],
+          [hcell('문제 인식',    2400), cell(c.summary.problem,     { width: 7506 })],
+          [hcell('실현 가능성',  2400), cell(c.summary.feasibility, { width: 7506 })],
+          [hcell('성장 전략',    2400), cell(c.summary.growth,      { width: 7506 })],
+          [hcell('팀 구성',      2400), cell(c.summary.team,        { width: 7506 })],
         ], [2400, 7506]),
 
         para([]),
         new Paragraph({ children: [new PageBreak()] }),
 
-        // 4개 챕터 동적 생성
+        // 4개 챕터
         ...c.chapters.flatMap((ch, ci) => {
           const labelMap: Record<string, string> = {
             problem:  '1. 문제 인식  (Problem)',
@@ -189,8 +211,7 @@ export async function buildDocx(input: BpInput): Promise<Buffer> {
           ]
           ch.sections.forEach(sec => {
             items.push(boldLabel(sec.title))
-            // split content into paragraphs on newlines
-            sec.content.split('\n').filter(l => l.trim()).forEach(line => {
+            sec.content.split('\n').filter((l: string) => l.trim()).forEach((line: string) => {
               if (line.startsWith('•') || line.startsWith('-')) {
                 items.push(bulletPara(line.replace(/^[•\-]\s*/, '')))
               } else {
