@@ -228,7 +228,7 @@ export async function buildDocx(input: BpInput): Promise<Buffer> {
 
         para([]),
         new Paragraph({
-          children: [run('※ 본 사업계획서는 AI가 초안 작성한 문서입니다. 실제 제출 전 대표자 성명·학력 등 개인정보 항목을 보완하고, 주관기관 요구 양식에 맞게 최종 편집하시기 바랍니다.', 16)],
+          children: [run('※ 본 사업계획서는 AI가 초안 작성한 문서입니다. 실제 제출 전 대표자 성명·학력 등 개인정보 항목을 보완하고, 주관기관 요구 양식에 맞게 최종 편집하시기 바랍니다.', { size: 16 })],
           spacing: { before: 300, after: 60 },
         }),
       ],
